@@ -9,13 +9,13 @@ static pthread_t threadId;
 static void *broadcastAgent(void *arg)
 {
 	//TODO: Implement thread function for the broadcast agent here!
-	return arg;
+    return arg;
 }
 
 int broadcastAgentInit(void)
 {
 	//TODO: create message queue
-	//TODO: start thread
+	//TODO: start thread/
 	return -1;
 }
 
