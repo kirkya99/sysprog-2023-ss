@@ -40,7 +40,8 @@ int networkReceive(int fd, Message *buffer)
 int networkSend(int fd, const Message *buffer)
 {
     //TODO: Send complete message
-    int connectionStatus = send(fd, buffer, sizeof(buffer), 0);
+    int temp = ntohs(buffer->len) + sizeof(buffer->len);
+    int connectionStatus = send(fd, buffer, temp, 0);
     if(connectionStatus <= communicationError)
     {
         goto error;

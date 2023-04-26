@@ -13,10 +13,14 @@ void *clientthread(void *arg)
     int connectionStatus;
     do {
         connectionStatus = receiveMessage(self->sock, &msg);
+        debugPrint("%s", msg.text, msg.len);
         broadcastMessage(self, &msg);
-        debugPrint("Connection Status: %i", connectionStatus);
+        //debugPrint("Connection Status: %i", connectionStatus);
     } while(connectionStatus > clientClosedConnection);
 
+    lockUser();
+    deleteUser(self);
+    unlockUser();
     debugPrint("Client thread stopping.");
     return NULL;
 }
