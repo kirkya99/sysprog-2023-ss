@@ -40,7 +40,7 @@ int networkReceive(int fd, Message *buffer)
 int networkSend(int fd, const Message *buffer)
 {
     //TODO: Send complete message
-    int temp = ntohs(buffer->len) + sizeof(buffer->len);
+
     int connectionStatus = send(fd, buffer, temp, 0);
     if(connectionStatus <= communicationError)
     {
@@ -51,3 +51,4 @@ int networkSend(int fd, const Message *buffer)
     errno = ENOSYS;
     return -1;
 }
+
