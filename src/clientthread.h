@@ -9,7 +9,5 @@ void *clientthread(void *arg);
 int receiveMessage(int fd, Message * buffer);
 void broadcastMessage(User *self, Message *buffer);
 void sendMessage(int fd, void * buffer);
-Message* initMessage(Message *buffer);
-int checkMessage(Message *buffer);
 
 #endif

@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <arpa/inet.h>
-
+#include <unistd.h>
 
 /* TODO: When implementing the fully-featured network protocol (including
  * login), replace this with message structures derived from the network
@@ -111,7 +111,7 @@ typedef struct __attribute__((packed))
 typedef union __attribute__((packed))
 {
     LoginRequest lrq;
-    LoginRequest lre;
+    LoginResponse lre;
     Client2Server c2s;
     Server2Client s2c;
     UserAdded uad;
@@ -126,5 +126,9 @@ typedef struct __attribute__((packed))
 
 int networkReceive(int fd, Message *buffer);
 int networkSend(int fd, const Message *buffer);
+int checkMsgHeader(uint8_t type, uint16_t length);
+void closeConnectionToClient(int fd);
+int checkMsgBody(Message *buffer);
+Message *initMessage(uint8_t msgType, Message *buffer);
 
 #endif

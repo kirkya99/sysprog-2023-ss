@@ -18,6 +18,7 @@ void *clientthread(void *arg)
         //debugPrint("Connection Status: %i", connectionStatus);
     } while(connectionStatus > clientClosedConnection);
 
+    closeConnectionToClient(self->sock);
     lockUser();
     deleteUser(self);
     unlockUser();
@@ -36,7 +37,7 @@ int receiveMessage(int fd, Message * buffer)
 }
 void broadcastMessage(User *self, Message *buffer)
 {
-    buffer->len = htons(buffer->len);
+    //buffer->header.length = htons(buffer->len);
     iterateOverList(self, buffer, &sendMessage);
 }
 void sendMessage(int fd, void * buffer)
@@ -46,3 +47,5 @@ void sendMessage(int fd, void * buffer)
        errorPrint("Error while sending message");
    }
 }
+
+
