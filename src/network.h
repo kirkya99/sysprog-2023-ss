@@ -129,6 +129,8 @@ int networkSend(int fd, const Message *buffer);
 int checkMsgHeader(uint8_t type, uint16_t length);
 void closeConnectionToClient(int fd);
 int checkMsgBody(Message *buffer);
-Message *initMessage(uint8_t msgType, Message *buffer);
+Message *initMessage(uint8_t msgType);
+void setMsgLength(Message *buffer, uint16_t strLength);
+void prepareMessage(Message *buffer);
 
 #endif

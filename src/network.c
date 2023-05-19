@@ -4,7 +4,7 @@
 
 int networkReceive(int fd, Message *buffer)
 {
-    int connectionStatus;
+    uint8_t connectionStatus;
     //TODO: Receive length
     connectionStatus = recv(fd, &buffer->header, sizeof(buffer->header), 0);
     if(connectionStatus == communicationError)
@@ -120,13 +120,13 @@ int checkMsgBody(Message *buffer)
     return status;
 }
 
-Message *initMessage(uint8_t msgType, Message *buffer)
+Message *initMessage(uint8_t msgType)
 {
     Message *newMessage;
     switch (msgType) {
         case loginResponseCode:
             newMessage->header.type = loginResponseCode;
-            newMessage->body.lre.magic = htonl(0xc001c001);
+            newMessage->body.lre.magic = 0xc001c001;
             break;
         case server2clientCode:
             newMessage->header.type = server2clientCode;
@@ -140,5 +140,45 @@ Message *initMessage(uint8_t msgType, Message *buffer)
     }
     return newMessage;
 }
+
+void setMsgLength(Message *buffer, uint16_t strLength)
+{
+    uint16_t len = 0;
+    switch (buffer->header.type) {
+        case loginResponseCode:
+            len = sizeof(buffer->body.lre.code) + sizeof(buffer->body.lre.magic) + strLength;
+            break;
+        case server2clientCode:
+            len = sizeof(buffer->body.s2c.timestamp) + sizeof(buffer->body.s2c.originalSender) + strLength;
+            break;
+        case userAddedCode:
+            len = sizeof(buffer->body.uad.timestamp) + strLength;
+            break;
+        case userRemovedCode:
+            len = sizeof(buffer->body.urm.timestamp) + sizeof(buffer->body.urm.code) + strLength;
+            break;
+    }
+    buffer->header.length = len;
+}
+
+void prepareMessage(Message *buffer)
+{
+    buffer->header.length = htons(buffer->header.length);
+    switch (buffer->header.type) {
+        case loginResponseCode:
+            buffer->body.lre.magic = htonl(buffer->body.lre.magic);
+            break;
+        case server2clientCode:
+            buffer->body.s2c.timestamp = hton64u(buffer->body.s2c.timestamp);
+            break;
+        case userAddedCode:
+            buffer->body.uad.timestamp = hton64u(buffer->body.uad.timestamp);
+            break;
+        case userRemovedCode:
+            buffer->body.urm.timestamp = hton64u(buffer->body.urm.timestamp);
+            break;
+    }
+}
+
 
 
