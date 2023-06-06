@@ -4,11 +4,13 @@
 
 int networkReceive(int fd, Message *buffer)
 {
-    uint8_t connectionStatus;
+    ssize_t bytesExpected = sizeof(buffer->header);
+    ssize_t connectionStatus;
     //TODO: Receive length
-    connectionStatus = recv(fd, &buffer->header, sizeof(buffer->header), 0);
-    if(connectionStatus == communicationError)
+    connectionStatus = recv(fd, &buffer->header, bytesExpected, MSG_WAITALL);
+    if(connectionStatus == communicationError || connectionStatus != bytesExpected)
     {
+        errorPrint("Error while receiving header");
         goto error;
     }
     else if(connectionStatus == clientClosedConnection)
@@ -23,10 +25,10 @@ int networkReceive(int fd, Message *buffer)
         goto error;
     }
     //TODO: Receive body
-    connectionStatus = recv(fd, &buffer->body, buffer->header.length, 0);
+    connectionStatus = recv(fd, &buffer->body, buffer->header.length, MSG_WAITALL);
     if(connectionStatus == communicationError)
     {
-        errorPrint("Error while receiving message!");
+        errorPrint("Error while receiving body!");
         goto error;
     }
     else if(connectionStatus == clientClosedConnection)
@@ -70,7 +72,7 @@ int networkSend(int fd, const Message *buffer)
 int checkMsgHeader(uint8_t type, uint16_t length)
 {
     int status = 0;
-    if(type < 5)
+    if(type > 5)
     {
         errorPrint("Incorrect type!");
         status = -1;
@@ -120,22 +122,22 @@ int checkMsgBody(Message *buffer)
     return status;
 }
 
-Message *initMessage(uint8_t msgType)
+Message initMessage(uint8_t msgType)
 {
-    Message *newMessage;
+    Message newMessage;
     switch (msgType) {
         case loginResponseCode:
-            newMessage->header.type = loginResponseCode;
-            newMessage->body.lre.magic = 0xc001c001;
+            newMessage.header.type = loginResponseCode;
+            newMessage.body.lre.magic = 0xc001c001;
             break;
         case server2clientCode:
-            newMessage->header.type = server2clientCode;
+            newMessage.header.type = server2clientCode;
             break;
         case userAddedCode:
-            newMessage->header.type = userAddedCode;
+            newMessage.header.type = userAddedCode;
             break;
         case userRemovedCode:
-            newMessage->header.type = userRemovedCode;
+            newMessage.header.type = userRemovedCode;
             break;
     }
     return newMessage;

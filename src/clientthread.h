@@ -11,7 +11,5 @@ void broadcastMessage(User *self, Message *buffer);
 void sendMessage(int fd, void * buffer);
 int getStringLength(Message *buffer);
 int checkClientName(char *name, int length);
-Message *removeUser(uint8_t code, char *userName, uint16_t nameLenght);
-
 
 #endif

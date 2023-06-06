@@ -11,50 +11,70 @@ void *clientthread(void *arg)
 
     //TODO: Receive LoginRequest
     lockUser();
-    Message *lrq;
+    Message lrq;
     connectionStatus = receiveMessage(self->sock, &lrq);
     if(connectionStatus <= 0)
     {
         goto exit;
     }
     int strLength = getStringLength(&lrq);
-    char *name;
-    memcpy(name, lrq->body.lrq.name, strLength);
+    char name [NAME_MAX];
+    memcpy(name, lrq.body.lrq.name, strLength);
     //TODO: Send LoginResponse
-    Message *lre = initMessage(loginResponseCode);
-    lre->body.lre.code = checkClientName(name, strLength);
+    Message lre = initMessage(loginResponseCode);
+    lre.body.lre.code = checkClientName(name, strLength);
     char *sName = "reference-server";
-    memcpy(lre->body.lre.sName, sName, strlen(sName));
+    memcpy(lre.body.lre.sName, sName, strlen(sName));
 
-    setMsgLength(lre, strlen(sName));
-    prepareMessage(lre);
-    sendMessage(self->sock,lre);
-    if(lre->body.lre.code != 0)
+    setMsgLength(&lre, strlen(sName));
+    prepareMessage(&lre);
+    sendMessage(self->sock,&lre);
+    if(lre.body.lre.code != 0)
     {
         goto exit;
     }
-    memcpy(self->name, lrq->body.lrq.name, strLength);
-    self->name[strLength] = '\0';
+    name[strLength] = '\0';
+    strcpy(&self->name, name);
 
     //TODO: Send UserAdded to all clients
-    Message *uad = initMessage(userAddedCode);
-    memcpy(uad->body.uad.name, lrq->body.lrq.name, strLength);
-    setMsgLength(uad, strLength);
-    uad->body.uad.timestamp = time(NULL);
-    prepareMessage(uad);
-    sendMessage(self->sock, uad);
-    broadcastMessage(self, uad);
+    Message uad = initMessage(userAddedCode);
+    memcpy(uad.body.uad.name, lrq.body.lrq.name, strLength);
+    setMsgLength(&uad, strLength);
+    uad.body.uad.timestamp = time(NULL);
+    prepareMessage(&uad);
+    sendMessage(self->sock, &uad);
+    broadcastMessage(self, &uad);
+
+    //TODO: Send UserAdded of all previous registered clients to new client
+    User *user = getFirstUser();
+    while(user->next != NULL)
+    {
+        if(user != self)
+        {
+            strLength = strlen(&user->name);
+            memcpy(uad.body.uad.name, &user->name, strLength);
+            setMsgLength(&uad, strLength);
+            uad.body.uad.timestamp = time(NULL);
+            prepareMessage(&uad);
+            sendMessage(self->sock, &uad);
+        }
+        user = user->next;
+    }
     unlockUser();
 
     //TODO: Send and receive messages
-    Message *c2s, *s2c, *urm;
-    char *text;
+    Message c2s, s2c, urm;
+    char text [TEXT_MAX];
     uint8_t urmCode;
     int loop = 1;
+
     while(loop == 1)
     {
+        int test = 1;
+
         //TODO: Receive Client2Server
-        connectionStatus = receiveMessage(self->sock, c2s);
+        s2c = initMessage(server2clientCode);
+        connectionStatus = receiveMessage(self->sock, &c2s);
         if(connectionStatus == clientClosedConnection)
         {
             urmCode = connectionClosedByClientCode;
@@ -65,22 +85,29 @@ void *clientthread(void *arg)
             urmCode = communicationErrorCode;
             loop = 0;
         }
-        strLength = getStringLength(c2s);
-        memcpy(s2c->body.s2c.text, c2s->body.c2s.text, strLength);
-        strcpy(s2c->body.s2c.originalSender, self->name);
-        s2c->body.s2c.timestamp = time(NULL);
-        setMsgLength(s2c, strLength);
+        strLength = getStringLength(&c2s);
+        memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
+        strcpy(s2c.body.s2c.originalSender, &self->name);
+        s2c.body.s2c.timestamp = time(NULL);
+        setMsgLength(&s2c, strLength);
 
         //TODO: Send Server2Client
-        prepareMessage(s2c);
-        broadcastMessage(self, s2c);
+        prepareMessage(&s2c);
+        sendMessage(self->sock, &s2c);
+        broadcastMessage(self, &s2c);
     }
     lockUser();
-    urm = removeUser(urmCode, self->name, strlen(self->name));
+    urm = initMessage(userRemovedCode);
+    urm.body.urm.code = urmCode;
+    urm.body.urm.timestamp = time(NULL);
+    strLength = strlen(self->name);
+    memcpy(urm.body.urm.name, &self->name, strLength);
+    setMsgLength(&urm, strLength);
+
     if(getFirstUser() != NULL) {
-        prepareMessage(urm);
-        sendMessage(self->sock, urm);
-        broadcastMessage(self, urm);
+        prepareMessage(&urm);
+        sendMessage(self->sock, &urm);
+        broadcastMessage(self, &urm);
     }
     unlockUser();
 
@@ -121,6 +148,7 @@ int getStringLength(Message *buffer)
     switch (buffer->header.type) {
         case loginRequestCode:
             length = buffer->header.length - sizeof(buffer->body.lrq.version) - sizeof(buffer->body.lrq.magic);
+            infoPrint("%i", length);
             break;
         case client2ServerCode:
             length = buffer->header.length;
@@ -145,7 +173,7 @@ int checkClientName(char *name, int length)
     User *user = getFirstUser();
     while(user != NULL)
     {
-        if(strcmp(name, user)==0)
+        if(memcmp(name, &user->name, length)==0)
         {
             statusCode = nameAlreadyTakenByAnotherUserCode;
             return statusCode;
@@ -157,16 +185,6 @@ int checkClientName(char *name, int length)
         user = user->next;
     }
     return statusCode;
-}
-
-Message *removeUser(uint8_t code, char *userName, uint16_t nameLenght)
-{
-    Message *urm = initMessage(5);
-    urm->body.urm.code = code;
-    urm->body.urm.timestamp = time(NULL);
-    memcpy(urm->body.urm.name, userName, nameLenght);
-    setMsgLength(urm->body.urm.name, nameLenght);
-    return urm;
 }
 
 

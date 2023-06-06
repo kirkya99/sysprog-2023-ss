@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         }
     }
     //TODO: perform initialization
-
+    debugEnable();
     //TODO: use port specified via command line
     const int result = connectionHandler((in_port_t)port);
 

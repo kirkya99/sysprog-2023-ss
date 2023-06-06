@@ -91,7 +91,7 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     uint64_t timestamp;
-    char originalSender [NAME_MAX];
+    char originalSender [32];
     char text [TEXT_MAX];
 } Server2Client;
 
@@ -129,7 +129,7 @@ int networkSend(int fd, const Message *buffer);
 int checkMsgHeader(uint8_t type, uint16_t length);
 void closeConnectionToClient(int fd);
 int checkMsgBody(Message *buffer);
-Message *initMessage(uint8_t msgType);
+Message initMessage(uint8_t msgType);
 void setMsgLength(Message *buffer, uint16_t strLength);
 void prepareMessage(Message *buffer);
 
