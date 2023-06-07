@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include "user.h"
 #include "clientthread.h"
+#include "util.h"
 
 static pthread_mutex_t userLock = PTHREAD_MUTEX_INITIALIZER;
 static User *userFront = NULL;
@@ -96,4 +97,13 @@ int initMutex()
     pthread_mutexattr_t mattr;
     ret = pthread_mutex_init(&userLock, &mattr);
     return ret;
+}
+
+void printList()
+{
+    User *it;
+    for(it = userFront; it!= NULL; it = it->next)
+    {
+        errorPrint(&it->next);
+    }
 }

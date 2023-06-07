@@ -68,45 +68,47 @@ void *clientthread(void *arg)
     uint8_t urmCode;
     int loop = 1;
 
-    while(loop == 1)
-    {
+    while(loop == 1) {
         int test = 1;
 
         //TODO: Receive Client2Server
         s2c = initMessage(server2clientCode);
         connectionStatus = receiveMessage(self->sock, &c2s);
-        if(connectionStatus == clientClosedConnection)
-        {
+        debugPrint("Connection Status: %i", connectionStatus);
+        if (connectionStatus == clientClosedConnection) {
             urmCode = connectionClosedByClientCode;
             loop = 0;
         }
-        if(connectionStatus == communicationError)
-        {
+        if (connectionStatus == communicationError) {
             urmCode = communicationErrorCode;
             loop = 0;
         }
-        strLength = getStringLength(&c2s);
-        memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
-        strcpy(s2c.body.s2c.originalSender, &self->name);
-        s2c.body.s2c.timestamp = time(NULL);
-        setMsgLength(&s2c, strLength);
+        if (connectionStatus > clientClosedConnection) {
+            strLength = getStringLength(&c2s);
+            memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
+            strcpy(s2c.body.s2c.originalSender, &self->name);
+            s2c.body.s2c.timestamp = time(NULL);
+            setMsgLength(&s2c, strLength);
 
-        //TODO: Send Server2Client
-        prepareMessage(&s2c);
-        sendMessage(self->sock, &s2c);
-        broadcastMessage(self, &s2c);
+            //TODO: Send Server2Client
+            prepareMessage(&s2c);
+            sendMessage(self->sock, &s2c);
+            broadcastMessage(self, &s2c);
+        }
     }
     lockUser();
     urm = initMessage(userRemovedCode);
     urm.body.urm.code = urmCode;
     urm.body.urm.timestamp = time(NULL);
-    strLength = strlen(self->name);
-    memcpy(urm.body.urm.name, &self->name, strLength);
+    strLength = strlen(&self->name);
+    if(self->name != NULL)
+    {
+        memcpy(urm.body.urm.name, &self->name, strLength);
+    }
     setMsgLength(&urm, strLength);
 
     if(getFirstUser() != NULL) {
         prepareMessage(&urm);
-        sendMessage(self->sock, &urm);
         broadcastMessage(self, &urm);
     }
     unlockUser();
@@ -116,7 +118,9 @@ void *clientthread(void *arg)
     closeConnectionToClient(self->sock);
     lockUser();
     deleteUser(self);
+    self = NULL;
     unlockUser();
+    printList();
     debugPrint("Client thread stopping.");
     return NULL;
 }
