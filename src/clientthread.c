@@ -120,7 +120,6 @@ void *clientthread(void *arg)
     deleteUser(self);
     self = NULL;
     unlockUser();
-    printList();
     debugPrint("Client thread stopping.");
     return NULL;
 }

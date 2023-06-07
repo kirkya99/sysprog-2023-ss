@@ -8,15 +8,16 @@ int networkReceive(int fd, Message *buffer)
     ssize_t connectionStatus;
     //TODO: Receive length
     connectionStatus = recv(fd, &buffer->header, bytesExpected, MSG_WAITALL);
-    if(connectionStatus == communicationError || connectionStatus != bytesExpected)
+    if(connectionStatus == clientClosedConnection)
+    {
+        return connectionStatus;
+    }
+    else if(connectionStatus == communicationError || connectionStatus != bytesExpected)
     {
         errorPrint("Error while receiving header");
         goto error;
     }
-    else if(connectionStatus == clientClosedConnection)
-    {
-        return connectionStatus;
-    }
+
     //TODO: Convert length byte order
     buffer->header.length = ntohs(buffer->header.length);
     //TODO: Validate header
