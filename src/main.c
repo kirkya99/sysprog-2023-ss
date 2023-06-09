@@ -3,6 +3,7 @@
 #include "util.h"
 #include <getopt.h>
 #include <stdio.h>
+#include "broadcastagent.h"
 
 static void print_help();
 static uint16_t input(int argc, char **argv);
@@ -49,6 +50,7 @@ int main(int argc, char **argv)
                 break;
             case 'h':
                 print_help();
+                return EXIT_SUCCESS;
                 break;
             default:
                 infoPrint("Option %c incorrect", option_index);
@@ -57,10 +59,16 @@ int main(int argc, char **argv)
     }
     //TODO: perform initialization
     debugEnable();
+    if(broadcastAgentInit()==-1)
+    {
+        return EXIT_FAILURE;
+    }
+
     //TODO: use port specified via command line
     const int result = connectionHandler((in_port_t)port);
 
     //TODO: perform cleanup, if required by your implementation
+    broadcastAgentCleanup();
     return result != -1 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

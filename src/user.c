@@ -39,13 +39,12 @@ struct User *createUser()
     return newUser;
 }
 
-int iterateOverList(struct User *user, void* buffer, void (*func)(int, void*))
+int iterateOverList(User *self, void* buffer, void (*func)(int, void*))
 {
     User* it = userFront;
     int retVal = 0;
-    for (it; it != NULL; it = it->next)
-    {
-        if(it != user)
+    for (it; it != NULL; it = it->next) {
+        if (it != self)
         {
             func(it->sock, buffer);
         }
@@ -57,7 +56,7 @@ void deleteUser(User *toBeDeleted)
 {
     if(toBeDeleted == userFront)
     {
-        userFront = userFront->next;
+        userFront = toBeDeleted->next;
     }
     else
     {
@@ -73,6 +72,7 @@ void deleteUser(User *toBeDeleted)
         toBeDeleted->next->prev = toBeDeleted->prev;
     }
     free(toBeDeleted);
+
 }
 
 struct User* getFirstUser()
@@ -99,11 +99,14 @@ int initMutex()
     return ret;
 }
 
-void printList()
+void printUserList()
 {
-    User *it;
-    for(it = userFront; it!= NULL; it = it->next)
+    User *it = userFront;
+    debugPrint("Userlist:");
+    for(it; it!=NULL; it=it->next)
     {
-        errorPrint(&it->next);
+        debugPrint(it->name);
     }
+    debugPrint("List End");
 }
+

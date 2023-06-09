@@ -10,7 +10,7 @@ typedef struct User
     struct User *next;
     pthread_t thread;	//thread ID of the client thread
     int sock;		//socket for client
-    char *name;
+    char name [32];
 } User;
 
 //TODO: Add prototypes for functions that fulfill the following tasks:
@@ -23,10 +23,11 @@ typedef struct User
  * User functions
  */
 struct User *createUser();
-int iterateOverList(struct User *user, void* buffer, void (*func)(int, void*));
+int iterateOverList(User *self, void* buffer, void (*func)(int, void*));
 void deleteUser(User *toBeDeleted);
 struct User* getFirstUser();
-void printList();
+void printUserList();
+
 
 /*
  * Mutex Locking

@@ -6,25 +6,12 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
 
 /* TODO: When implementing the fully-featured network protocol (including
  * login), replace this with message structures derived from the network
  * protocol (RFC) as found in the moodle course. */
-enum
-{
-    MSG_MAX = 1024
-};
 
-enum TEXT_LIMIT
-{
-    TEXT_MAX = 512
-};
-
-enum NAME_LIMIT
-{
-    NAME_MIN = 1,
-    NAME_MAX = 31
-};
 enum MESSAGE_TYPES
 {
     loginRequestCode = 0,
@@ -53,6 +40,16 @@ enum NETWORK_STATUS
 {
     clientClosedConnection = 0,
     communicationError = -1
+};
+enum MESSAGE_LIMITS
+{
+    TEXT_MAX = 512,
+    NAME_MIN = 1,
+    NAME_MAX = 31,
+    SENDER_MAX = 32,
+    HEADER_MAX = 3,
+    BODY_MAX = 552,
+    MSG_MAX = HEADER_MAX + BODY_MAX + 1
 };
 
 
@@ -91,7 +88,7 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     uint64_t timestamp;
-    char originalSender [32];
+    char originalSender [SENDER_MAX];
     char text [TEXT_MAX];
 } Server2Client;
 
@@ -132,5 +129,6 @@ int checkMsgBody(Message *buffer);
 Message initMessage(uint8_t msgType);
 void setMsgLength(Message *buffer, uint16_t strLength);
 void prepareMessage(Message *buffer);
+uint64_t getTime();
 
 #endif

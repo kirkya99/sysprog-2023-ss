@@ -166,6 +166,7 @@ void setMsgLength(Message *buffer, uint16_t strLength)
 
 void prepareMessage(Message *buffer)
 {
+
     buffer->header.length = htons(buffer->header.length);
     switch (buffer->header.type) {
         case loginResponseCode:
@@ -181,6 +182,11 @@ void prepareMessage(Message *buffer)
             buffer->body.urm.timestamp = hton64u(buffer->body.urm.timestamp);
             break;
     }
+}
+
+uint64_t getTime()
+{
+    return time(NULL);
 }
 
 

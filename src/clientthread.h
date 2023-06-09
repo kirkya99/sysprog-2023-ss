@@ -6,9 +6,6 @@
 
 void *clientthread(void *arg);
 
-int receiveMessage(int fd, Message * buffer);
-void broadcastMessage(User *self, Message *buffer);
-void sendMessage(int fd, void * buffer);
 int getStringLength(Message *buffer);
 int checkClientName(char *name, int length);
 

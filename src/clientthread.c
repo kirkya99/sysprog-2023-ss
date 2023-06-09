@@ -2,6 +2,8 @@
 #include "user.h"
 #include "util.h"
 #include "network.h"
+#include "broadcastagent.h"
+#include <mqueue.h>
 
 void *clientthread(void *arg)
 {
@@ -24,7 +26,8 @@ void *clientthread(void *arg)
     Message lre = initMessage(loginResponseCode);
     lre.body.lre.code = checkClientName(name, strLength);
     char *sName = "reference-server";
-    memcpy(lre.body.lre.sName, sName, strlen(sName));
+    int sNameLen = strlen(sName);
+    memcpy(lre.body.lre.sName, sName, sNameLen);
 
     setMsgLength(&lre, strlen(sName));
     prepareMessage(&lre);
@@ -42,8 +45,7 @@ void *clientthread(void *arg)
     setMsgLength(&uad, strLength);
     uad.body.uad.timestamp = time(NULL);
     prepareMessage(&uad);
-    sendMessage(self->sock, &uad);
-    broadcastMessage(self, &uad);
+    broadcastMessage(NULL, &uad);
 
     //TODO: Send UserAdded of all previous registered clients to new client
     User *user = getFirstUser();
@@ -54,14 +56,14 @@ void *clientthread(void *arg)
             strLength = strlen(&user->name);
             memcpy(uad.body.uad.name, &user->name, strLength);
             setMsgLength(&uad, strLength);
-            uad.body.uad.timestamp = time(NULL);
+            uad.body.uad.timestamp = getTime();
             prepareMessage(&uad);
             sendMessage(self->sock, &uad);
         }
         user = user->next;
     }
     unlockUser();
-
+    //printUserList();
     //TODO: Send and receive messages
     Message c2s, s2c, urm;
     char text [TEXT_MAX];
@@ -87,27 +89,30 @@ void *clientthread(void *arg)
             strLength = getStringLength(&c2s);
             memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
             strcpy(s2c.body.s2c.originalSender, &self->name);
-            s2c.body.s2c.timestamp = time(NULL);
+            s2c.body.s2c.timestamp = getTime();
             setMsgLength(&s2c, strLength);
 
             //TODO: Send Server2Client
+
             prepareMessage(&s2c);
-            sendMessage(self->sock, &s2c);
-            broadcastMessage(self, &s2c);
+            //broadcastMessage(NULL, &s2c);
+            printMSQ();
+            mqd_t messageQueue = getMSQ();
+            mq_send(messageQueue, (char*)&s2c, sizeof(Message), 0);
+            //sendToQueue(&s2c);
         }
     }
     lockUser();
     urm = initMessage(userRemovedCode);
     urm.body.urm.code = urmCode;
-    urm.body.urm.timestamp = time(NULL);
+    urm.body.urm.timestamp = getTime();
     strLength = strlen(&self->name);
     if(self->name != NULL)
     {
         memcpy(urm.body.urm.name, &self->name, strLength);
     }
     setMsgLength(&urm, strLength);
-
-    if(getFirstUser() != NULL) {
+    if(getFirstUser()->next != NULL) {
         prepareMessage(&urm);
         broadcastMessage(self, &urm);
     }
@@ -119,32 +124,13 @@ void *clientthread(void *arg)
     lockUser();
     deleteUser(self);
     self = NULL;
+    //free(self);
     unlockUser();
+    //printUserList();
     debugPrint("Client thread stopping.");
     return NULL;
 }
 
-int receiveMessage(int fd, Message * buffer)
-{
-    int connectionStatus = networkReceive(fd, buffer);
-    if(connectionStatus <= communicationError)
-    {
-        errorPrint("Error while receiving message");
-    }
-    return connectionStatus;
-}
-void broadcastMessage(User *self, Message *buffer)
-{
-    //buffer->header.length = htons(buffer->len);
-    iterateOverList(self, buffer, &sendMessage);
-}
-void sendMessage(int fd, void * buffer)
-{
-   if(networkSend(fd, buffer) <= communicationError)
-   {
-       errorPrint("Error while sending message");
-   }
-}
 int getStringLength(Message *buffer)
 {
     int length = 0;
@@ -176,7 +162,7 @@ int checkClientName(char *name, int length)
     User *user = getFirstUser();
     while(user != NULL)
     {
-        if(memcmp(name, &user->name, length)==0)
+        if(strcmp(name, &user->name)==0)
         {
             statusCode = nameAlreadyTakenByAnotherUserCode;
             return statusCode;
