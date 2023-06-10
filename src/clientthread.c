@@ -76,7 +76,6 @@ void *clientthread(void *arg)
         //TODO: Receive Client2Server
         s2c = initMessage(server2clientCode);
         connectionStatus = receiveMessage(self->sock, &c2s);
-        debugPrint("Connection Status: %i", connectionStatus);
         if (connectionStatus == clientClosedConnection) {
             urmCode = connectionClosedByClientCode;
             loop = 0;
@@ -95,11 +94,7 @@ void *clientthread(void *arg)
             //TODO: Send Server2Client
 
             prepareMessage(&s2c);
-            //broadcastMessage(NULL, &s2c);
-            printMSQ();
-            mqd_t messageQueue = getMSQ();
-            mq_send(messageQueue, (char*)&s2c, sizeof(Message), 0);
-            //sendToQueue(&s2c);
+            sendToQueue(&s2c);
         }
     }
     lockUser();

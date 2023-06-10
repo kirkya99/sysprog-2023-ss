@@ -84,7 +84,10 @@ void sendMessage(int fd, void * buffer)
 
 void sendToQueue(Message *buffer)
 {
-    mq_send(messageQueue, (char*)buffer, buffer->header.length + HEADER_MAX, priority);
+    struct timespec ts;
+    fillTime(&ts);
+    //mq_send(messageQueue, (char*)buffer, sizeof(Message), 0);
+    mq_timedsend(messageQueue, (char*)buffer, sizeof(Message), 0, &ts);
 }
 
 void printMSQ()
@@ -94,6 +97,12 @@ void printMSQ()
 mqd_t getMSQ()
 {
     return messageQueue;
+}
+
+void fillTime(struct timespec *ts)
+{
+    ts->tv_sec = getTime();
+    ts->tv_nsec = duration_wait;
 }
 
 

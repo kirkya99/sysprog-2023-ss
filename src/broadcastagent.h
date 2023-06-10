@@ -5,6 +5,12 @@
 #include "user.h"
 #include <mqueue.h>
 
+enum TIME
+{
+    sec_to_nano = 1000000000,
+    duration_wait = 100000000
+};
+
 int broadcastAgentInit(void);
 void broadcastAgentCleanup(void);
 
@@ -14,5 +20,6 @@ void sendMessage(int fd, void * buffer);
 void sendToQueue(Message *buffer);
 void printMSQ();
 mqd_t getMSQ();
+void fillTime(struct timespec *ts);
 
 #endif
