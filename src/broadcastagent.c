@@ -12,18 +12,28 @@ static pthread_t threadId;
 static int broadcastStatus;
 static uint8_t priority = 0;
 struct mq_attr options;
-
+uint8_t chatStatus = running;
 
 static void *broadcastAgent(void *arg)
 {
+
+    char *text = "Discarded your message, because th chat is paused nad the send queue is full!";
     Message msg;
     while(1)
     {
         //TODO: Implement thread function for the broadcast agent here!
         mq_receive(messageQueue, ((char*)&msg), options.mq_msgsize, NULL);
-        //body.s2c.timestamp = getTime();
-        //prepareMessage(&msg);
+        if(options.mq_curmsgs > options.mq_maxmsg)
+        {
+            msg = initMessage(server2clientCode);
+            msg.body.s2c.timestamp = getTime();
+            strcpy(msg.body.s2c.originalSender,'\0');
+            memcpy(msg.body.s2c.text, text, strlen(text));
+            setMsgLength(&msg,strlen(text));
+            prepareMessage(&msg);
+        }
         broadcastMessage(NULL, &msg);
+
     }
     return arg;
 }
@@ -85,8 +95,8 @@ void sendMessage(int fd, void * buffer)
 void sendToQueue(Message *buffer)
 {
     struct timespec ts;
-    fillTime(&ts);
-    //mq_send(messageQueue, (char*)buffer, sizeof(Message), 0);
+    ts.tv_sec = 0;
+    ts.tv_nsec = 0;
     mq_timedsend(messageQueue, (char*)buffer, sizeof(Message), 0, &ts);
 }
 
@@ -99,10 +109,17 @@ mqd_t getMSQ()
     return messageQueue;
 }
 
-void fillTime(struct timespec *ts)
+void pauseChat()
 {
-    ts->tv_sec = getTime();
-    ts->tv_nsec = duration_wait;
+    chatStatus = paused;
+}
+void resumeChat()
+{
+    chatStatus = running;
+}
+uint8_t getChatStatus()
+{
+    return chatStatus;
 }
 
 

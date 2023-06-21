@@ -71,7 +71,6 @@ void deleteUser(User *toBeDeleted)
     {
         toBeDeleted->next->prev = toBeDeleted->prev;
     }
-    free(toBeDeleted);
 
 }
 
@@ -97,16 +96,5 @@ int initMutex()
     pthread_mutexattr_t mattr;
     ret = pthread_mutex_init(&userLock, &mattr);
     return ret;
-}
-
-void printUserList()
-{
-    User *it = userFront;
-    debugPrint("Userlist:");
-    for(it; it!=NULL; it=it->next)
-    {
-        debugPrint(it->name);
-    }
-    debugPrint("List End");
 }
 

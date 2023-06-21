@@ -5,10 +5,10 @@
 #include "user.h"
 #include <mqueue.h>
 
-enum TIME
+enum CHAT_STATUS
 {
-    sec_to_nano = 1000000000,
-    duration_wait = 100000000
+    running = 0,
+    paused = 1
 };
 
 int broadcastAgentInit(void);
@@ -20,6 +20,8 @@ void sendMessage(int fd, void * buffer);
 void sendToQueue(Message *buffer);
 void printMSQ();
 mqd_t getMSQ();
-void fillTime(struct timespec *ts);
+void pauseChat();
+void resumeChat();
+uint8_t getChatStatus();
 
 #endif

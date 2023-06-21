@@ -26,8 +26,6 @@ struct User *createUser();
 int iterateOverList(User *self, void* buffer, void (*func)(int, void*));
 void deleteUser(User *toBeDeleted);
 struct User* getFirstUser();
-void printUserList();
-
 
 /*
  * Mutex Locking

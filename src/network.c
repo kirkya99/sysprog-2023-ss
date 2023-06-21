@@ -99,11 +99,6 @@ int checkMsgHeader(uint8_t type, uint16_t length)
     return status;
 }
 
-void closeConnectionToClient(int fd)
-{
-    close(fd);
-}
-
 int checkMsgBody(Message *buffer)
 {
     int status = 0;

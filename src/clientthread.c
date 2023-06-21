@@ -46,6 +46,8 @@ void *clientthread(void *arg)
     uad.body.uad.timestamp = time(NULL);
     prepareMessage(&uad);
     broadcastMessage(NULL, &uad);
+    debugPrint("User added:");
+    printList();
 
     //TODO: Send UserAdded of all previous registered clients to new client
     User *user = getFirstUser();
@@ -56,16 +58,15 @@ void *clientthread(void *arg)
             strLength = strlen(&user->name);
             memcpy(uad.body.uad.name, &user->name, strLength);
             setMsgLength(&uad, strLength);
-            uad.body.uad.timestamp = getTime();
+            uad.body.uad.timestamp = 0;
             prepareMessage(&uad);
             sendMessage(self->sock, &uad);
         }
         user = user->next;
     }
     unlockUser();
-    //printUserList();
     //TODO: Send and receive messages
-    Message c2s, s2c, urm;
+    Message c2s, s2c;
     char text [TEXT_MAX];
     uint8_t urmCode;
     int loop = 1;
@@ -85,6 +86,12 @@ void *clientthread(void *arg)
             loop = 0;
         }
         if (connectionStatus > clientClosedConnection) {
+            if(c2s.body.c2s.text[0]=='/')
+            {
+                handleAdmin(c2s, self);
+            }
+            else
+            {
             strLength = getStringLength(&c2s);
             memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
             strcpy(s2c.body.s2c.originalSender, &self->name);
@@ -95,33 +102,18 @@ void *clientthread(void *arg)
 
             prepareMessage(&s2c);
             sendToQueue(&s2c);
+            }
         }
     }
-    lockUser();
-    urm = initMessage(userRemovedCode);
-    urm.body.urm.code = urmCode;
-    urm.body.urm.timestamp = getTime();
-    strLength = strlen(&self->name);
-    if(self->name != NULL)
-    {
-        memcpy(urm.body.urm.name, &self->name, strLength);
-    }
-    setMsgLength(&urm, strLength);
-    if(getFirstUser()->next != NULL) {
-        prepareMessage(&urm);
-        broadcastMessage(self, &urm);
-    }
-    unlockUser();
+    handleURM(urmCode, self);
+
+
 
     exit:
     unlockUser();
-    closeConnectionToClient(self->sock);
-    lockUser();
-    deleteUser(self);
-    self = NULL;
-    //free(self);
-    unlockUser();
-    //printUserList();
+
+
+    closeClient(self);
     debugPrint("Client thread stopping.");
     return NULL;
 }
@@ -157,7 +149,7 @@ int checkClientName(char *name, int length)
     User *user = getFirstUser();
     while(user != NULL)
     {
-        if(strcmp(name, &user->name)==0)
+        if(strcmp(name, user->name)==0)
         {
             statusCode = nameAlreadyTakenByAnotherUserCode;
             return statusCode;
@@ -171,5 +163,147 @@ int checkClientName(char *name, int length)
     return statusCode;
 }
 
+void handleURM(uint8_t urmCode, User *self)
+{
+    Message urm;
+    uint16_t strLength;
+    lockUser();
+    urm = initMessage(userRemovedCode);
+    urm.body.urm.code = urmCode;
+    urm.body.urm.timestamp = getTime();
+    strLength = strlen(self->name);
+    memcpy(urm.body.urm.name, self->name, strLength);
+    setMsgLength(&urm, strLength);
+    if(getFirstUser()->next != NULL) {
+        prepareMessage(&urm);
+        broadcastMessage(self, &urm);
+    }
+    unlockUser();
+}
+
+void handleAdmin(Message buffer, User *self)
+{
+    Message s2c = initMessage(server2clientCode);
+    char text [TEXT_MAX];
+
+    char *command;
+    uint16_t strLength = getStringLength(&buffer);
+    memcpy(text, buffer.body.c2s.text, strLength);
+    uint8_t commandCode;
+    int ret = 0;
+    uint16_t length;
+
+    //TODO: Identify the send command
+    if(strncmp(text, "/kick", 5) == 0 && strLength > 6)
+    {
+        commandCode = kickClientCommandCode;
+    }
+    else if(strncmp(text, "/pause", 6) == 0)
+    {
+        commandCode = pauseChatCommandCode;
+    }
+    else if(strncmp(text, "/resume", 7) == 0)
+    {
+        commandCode = resumeChatCommandCode;
+    }
+    else
+    {
+        commandCode = invalidCommandCode;
+    }
+
+    //TODO: Check the command
+    if(commandCode == invalidCommandCode)
+    {
+        strcpy(text, "Invalid Command!");
+    }
+    else if(strcmp(self->name, "Admin") != 0)
+    {
+        switch (commandCode) {
+            case kickClientCommandCode:
+                strcpy(text, "You must be administrator to use the /kick Command!");
+                break;
+            case pauseChatCommandCode:
+                strcpy(text, "You must be administrator to use the /pause Command!");
+                break;
+            case resumeChatCommandCode:
+                strcpy(text, "You must be administrator to use the /resume Command!");
+                break;
+        }
+    }
+    else {
+        if (commandCode == kickClientCommandCode) {
+            char *command;
+            char tbkName[NAME_MAX] = "";
+            uint16_t length = getStringLength(&buffer);
+            uint16_t nameLength = length - 6;
+            memcpy(tbkName, buffer.body.c2s.text + 6, length);
+            tbkName[length] = '\0';
+            strcpy(text, tbkName);
+            User *it = getFirstUser();
+            while(it != NULL && strcmp(tbkName, it->name)==0)
+            {
+                it = it->next;
+            }
+            User *tbkUser = it;
+            if (tbkUser == NULL) {
+                strcpy(text, "User to /kick does not exist on the server");
+            } else
+            {
+                Message urm = initMessage(userRemovedCode);
+                urm.body.urm.code = kickedFromTheServerCode;
+                memcpy(urm.body.urm.name, tbkName, nameLength);
+                urm.body.urm.timestamp = getTime();
+                setMsgLength(&urm, nameLength);
+                prepareMessage(&urm);
+                broadcastMessage(tbkUser, &urm);
+                closeClient(tbkUser);
+
+            }
+        }
+        if (commandCode == pauseChatCommandCode) {
+            if (getChatStatus() == paused) {
+                strcpy(text, "The chat is already paused!");
+            } else {
+                strcpy(text, "Chat paused by administrator.");
+                pauseChat();
+            }
+        }
+        if (commandCode == resumeChatCommandCode) {
+            if (getChatStatus() == running) {
+                strcpy(text, "The chat is not paused!");
+            } else {
+                strcpy(text, "The chat is no longer paused.");
+                resumeChat();
+            }
+        }
+    }
+    if(commandCode != kickClientCommandCode)
+    {
+
+    }
+    debugPrint(text);
+}
+
+void closeClient(User *user)
+{
+    lockUser();
+    deleteUser(user);
+    unlockUser();
+    debugPrint("User removed:");
+    printList();
+    pthread_cancel(user->thread);
+    close(user->sock);
+    free(user);
+}
+
+void printList()
+{
+    User *it = getFirstUser();
+    while(it != NULL)
+    {
+        debugPrint(it->name);
+        it = it->next;
+    }
+}
 
 

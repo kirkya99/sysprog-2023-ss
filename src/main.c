@@ -4,8 +4,11 @@
 #include <getopt.h>
 #include <stdio.h>
 #include "broadcastagent.h"
+#include <signal.h>
+#include <stdbool.h>
 
 static void print_help();
+static void quit();
 static uint16_t input(int argc, char **argv);
 
 int main(int argc, char **argv)
@@ -66,8 +69,9 @@ int main(int argc, char **argv)
 
     //TODO: use port specified via command line
     const int result = connectionHandler((in_port_t)port);
-
+    signal(SIGINT, quit);
     //TODO: perform cleanup, if required by your implementation
+
     broadcastAgentCleanup();
     return result != -1 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -82,4 +86,9 @@ static void print_help()
     infoPrint("  -p PORT        set TCP port to use (default: 8111)\n");
     infoPrint("  -r             hexdump received packets\n");
     infoPrint("  -s             hexdump sent packets");
+}
+static void quit()
+{
+    infoPrint("Test");
+    exit(0);
 }
