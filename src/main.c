@@ -2,92 +2,89 @@
 #include "connectionhandler.h"
 #include "util.h"
 #include <getopt.h>
-#include <stdio.h>
 #include "broadcastagent.h"
 #include <signal.h>
-#include <stdbool.h>
+#include <unistd.h>
 
 static void print_help();
+
 static void quit();
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     uint16_t port = 8111;
     utilInit(argv[0]);
-    infoPrint("Chat server, group 02");	//TODO: Add your group number!
+    char *strPort;
+    infoPrint("Chat server, group 02");    //TODO: Add your group number!
 
     //TODO: evaluate command line arguments
     debugDisable();
-    styleDisable();
-    const char *short_options = "a:dmn:p:rs";
+    styleEnable();
+    const char *short_options = "dm:p:h";
     char *adminName = "admin";
     char *serverName = "reference_server";
     int option_index = 0;
-    while((option_index = getopt(argc, argv, short_options)) != -1)
-    {
+    while ((option_index = getopt(argc, argv, short_options)) != -1) {
         switch (option_index) {
-            case 'a':
-                strcpy(adminName, optarg);
-                break;
             case 'd':
-                if(debugEnabled() == 0)
-                {
+                if (debugEnabled() == 0) {
                     debugEnable();
                 }
                 break;
             case 'm':
-                if(styleEnabled() == 1)
-                {
+                if (styleEnabled() == 1) {
                     styleDisable();
                 }
                 break;
-            case 'n':
-                break;
             case 'p':
-                port = (uint16_t) atoi(optarg);
-                break;
-            case 'r':
-                break;
-            case 's':
+                strPort = strdup(optarg);
+                uint16_t strLength = strlen(strPort);
+                for (int i = 0; i < strLength; i++) {
+                    if (strPort[i] < 0x30 || strPort[i] > 0x39) {
+                        errorPrint("Port number must be an integer between 1024 and 65535!");
+                        exit(EXIT_SUCCESS);
+                    }
+                }
+                port = (uint16_t) atoi(strPort);
+                if (port < 1024) {
+                    errorPrint("Port number must be an integer between 1024 and 65535!");
+                    exit(EXIT_SUCCESS);
+                }
                 break;
             case 'h':
                 print_help();
-                return EXIT_SUCCESS;
-                break;
+                exit(EXIT_SUCCESS);
             default:
-                infoPrint("Option %c incorrect", option_index);
-                break;
+                errorPrint("Option %c incorrect", option_index);
+                exit(EXIT_SUCCESS);
         }
     }
     //TODO: perform initialization
     debugEnable();
-    if(broadcastAgentInit()==-1)
-    {
+
+    if (broadcastAgentInit() == -1) {
         return EXIT_FAILURE;
     }
 
     //TODO: use port specified via command line
-    const int result = connectionHandler((in_port_t)port);
     signal(SIGINT, quit);
+    const int result = connectionHandler((in_port_t) port);
     //TODO: perform cleanup, if required by your implementation
 
     broadcastAgentCleanup();
     return result != -1 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-static void print_help()
-{
-    infoPrint("Usage:  ./server [-a ADMIN] [-d] [-m] [-n SERVERNAME] [-p PORT] [-r] [-s]\n");
-    infoPrint("  -a ADMIN       set name of the administrator (default: admin)\n");
-    infoPrint("  -d             enable additional debug output\n");
-    infoPrint("  -m             do  not use colors for output (monochrome)\n");
-    infoPrint("  -n SERVERNAME  set server name (default: reference-server)\n");
-    infoPrint("  -p PORT        set TCP port to use (default: 8111)\n");
-    infoPrint("  -r             hexdump received packets\n");
-    infoPrint("  -s             hexdump sent packets");
+static void print_help() {
+    styleDisable();
+    infoPrint("Usage:  ./server [-d] [-m] [-p PORT]");
+    infoPrint("  -d             enable additional debug output");
+    infoPrint("  -m             do  not use colors for output (monochrome)");
+    infoPrint("  -p PORT        set TCP port to use (default: 8111)");
+    styleEnable();
 }
-static void quit()
-{
-    infoPrint("Test");
-    exit(0);
+
+static void quit() {
+    infoPrint("Caught Signal 2, shutting down!");
+    broadcastAgentCleanup();
+    exit(EXIT_SUCCESS);
 }
