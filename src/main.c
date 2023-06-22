@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
                     }
                 }
                 port = (uint16_t) atoi(strPort);
-                if (port < 1024) {
+                if (port < 1023 || port > 65535) {
                     errorPrint("Port number must be an integer between 1024 and 65535!");
                     exit(EXIT_SUCCESS);
                 }
