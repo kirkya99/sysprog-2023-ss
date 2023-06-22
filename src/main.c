@@ -4,7 +4,6 @@
 #include <getopt.h>
 #include "broadcastagent.h"
 #include <signal.h>
-#include <unistd.h>
 
 static void print_help();
 
@@ -20,8 +19,6 @@ int main(int argc, char **argv) {
     debugDisable();
     styleEnable();
     const char *short_options = "dm:p:h";
-    char *adminName = "admin";
-    char *serverName = "reference_server";
     int option_index = 0;
     while ((option_index = getopt(argc, argv, short_options)) != -1) {
         switch (option_index) {
@@ -59,18 +56,15 @@ int main(int argc, char **argv) {
         }
     }
     //TODO: perform initialization
-    debugEnable();
-
     if (broadcastAgentInit() == -1) {
         return EXIT_FAILURE;
     }
+    signal(SIGINT, quit);
 
     //TODO: use port specified via command line
-    signal(SIGINT, quit);
     const int result = connectionHandler((in_port_t) port);
     //TODO: perform cleanup, if required by your implementation
 
-    broadcastAgentCleanup();
     return result != -1 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

@@ -12,25 +12,20 @@ static User *userBack = NULL;
 /*
  * User functions
  */
-struct User *createUser()
-{
-    User * newUser = (User *) malloc( sizeof( User ) );
+struct User *createUser() {
+    User *newUser = (User *) malloc(sizeof(User));
     newUser->sock = 0;
     newUser->thread = 0;
-    if(newUser == NULL)
-    {
+    if (newUser == NULL) {
         return NULL;
     }
 
-    if(userFront == NULL)
-    {
+    if (userFront == NULL) {
         newUser->prev = NULL;
         newUser->next = NULL;
         userFront = newUser;
         userBack = newUser;
-    }
-    else if(userFront != NULL)
-    {
+    } else if (userFront != NULL) {
         userBack->next = newUser;
         newUser->next = NULL;
         newUser->prev = userBack;
@@ -39,59 +34,48 @@ struct User *createUser()
     return newUser;
 }
 
-int iterateOverList(User *self, void* buffer, void (*func)(int, void*))
-{
-    User* it = userFront;
+int iterateOverList(User *self, void *buffer, void (*func)(int, void *)) {
+    User *it = userFront;
     int retVal = 0;
     for (it; it != NULL; it = it->next) {
-        if (it != self)
-        {
+        if (it != self) {
             func(it->sock, buffer);
         }
     }
     return retVal;
 }
 
-void deleteUser(User *toBeDeleted)
-{
-    if(toBeDeleted == userFront)
-    {
+void deleteUser(User *toBeDeleted) {
+    if (toBeDeleted == userFront) {
         userFront = toBeDeleted->next;
-    }
-    else
-    {
+    } else {
         toBeDeleted->prev->next = toBeDeleted->next;
     }
 
-    if(toBeDeleted == userBack)
-    {
+    if (toBeDeleted == userBack) {
         userBack = toBeDeleted->prev;
-    }
-    else
-    {
+    } else {
         toBeDeleted->next->prev = toBeDeleted->prev;
     }
 
 }
 
-struct User* getFirstUser()
-{
+struct User *getFirstUser() {
     return userFront;
 }
+
 /*
  * Mutex Locking
  */
-void lockUser()
-{
+void lockUser() {
     pthread_mutex_lock(&userLock);
 }
 
-void unlockUser()
-{
+void unlockUser() {
     pthread_mutex_unlock(&userLock);
 }
-int initMutex()
-{
+
+int initMutex() {
     int ret;
     pthread_mutexattr_t mattr;
     ret = pthread_mutex_init(&userLock, &mattr);

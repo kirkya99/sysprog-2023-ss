@@ -21,26 +21,37 @@ void utilInit(const char *argv0);
 const char *getProgName(void);
 
 void debugEnable(void);
+
 int debugEnabled(void);
+
 void debugDisable(void);
 
 void styleEnable(void);
+
 int styleEnabled(void);
+
 void styleDisable(void);
 
 void normalPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 void debugPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 void infoPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 void errorPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
 void errnoPrint(const char *prefixFmt, ...) __attribute__((format(printf, 1, 2)));
 
 void debugHexdump(const void *ptr, size_t n, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+
 void hexdump(const void *ptr, size_t n, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+
 void vhexdump(const void *ptr, size_t n, const char *fmt, va_list args);
 
 size_t nameBytesValidate(const char *input, size_t n);
 
 uint64_t ntoh64u(uint64_t network64u);
+
 uint64_t hton64u(uint64_t host64u);
 
 #ifdef __cplusplus
