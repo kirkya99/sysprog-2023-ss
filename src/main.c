@@ -69,12 +69,10 @@ int main(int argc, char **argv) {
 }
 
 static void print_help() {
-    styleDisable();
     infoPrint("Usage:  ./server [-d] [-m] [-p PORT]");
     infoPrint("  -d             enable additional debug output");
     infoPrint("  -m             do  not use colors for output (monochrome)");
     infoPrint("  -p PORT        set TCP port to use (default: 8111)");
-    styleEnable();
 }
 
 static void quit() {

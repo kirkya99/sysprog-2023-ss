@@ -29,6 +29,8 @@ void deleteUser(User *toBeDeleted);
 
 struct User *getFirstUser();
 
+void printList();
+
 /*
  * Mutex Locking
  */

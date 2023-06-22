@@ -54,15 +54,13 @@ int connectionHandler(in_port_t port) {
         //TODO: add connection to user list and start client thread
         lockUser();
         struct User *user = createUser();
-        unlockUser();
-        lockUser();
         user->sock = active_socket;
-        unlockUser();
         // createThread:
         if (pthread_create(&user->thread, NULL, clientthread, user) != 0) {
             errorPrint("Error while creating thread");
             continue;
         }
+        unlockUser();
         continue;
         return 0;    //never reached
     }

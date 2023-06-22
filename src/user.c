@@ -35,9 +35,8 @@ struct User *createUser() {
 }
 
 int iterateOverList(User *self, void *buffer, void (*func)(int, void *)) {
-    User *it = userFront;
     int retVal = 0;
-    for (it; it != NULL; it = it->next) {
+    for (User *it = userFront; it != NULL; it = it->next) {
         if (it != self) {
             func(it->sock, buffer);
         }
@@ -80,5 +79,17 @@ int initMutex() {
     pthread_mutexattr_t mattr;
     ret = pthread_mutex_init(&userLock, &mattr);
     return ret;
+}
+
+void printList() {
+    User *it = getFirstUser();
+    if(it==NULL)
+    {
+        debugPrint("-");
+    }
+    while (it != NULL) {
+        debugPrint(it->name);
+        it = it->next;
+    }
 }
 

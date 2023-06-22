@@ -5,6 +5,7 @@
 #include "broadcastagent.h"
 #include <mqueue.h>
 
+
 void *clientthread(void *arg) {
     User *self = (User *) arg;
     debugPrint("Client thread started.");
@@ -66,13 +67,9 @@ void *clientthread(void *arg) {
     unlockUser();
     //TODO: Send and receive messages
     Message c2s, s2c;
-    char text[TEXT_MAX];
-    uint8_t urmCode;
     int loop = 1;
-
+    uint8_t urmCode;
     while (loop == 1) {
-        int test = 1;
-
         //TODO: Receive Client2Server
         s2c = initMessage(server2clientCode);
         connectionStatus = receiveMessage(self->sock, &c2s);
@@ -86,7 +83,11 @@ void *clientthread(void *arg) {
         }
         if (connectionStatus > clientClosedConnection) {
             if (c2s.body.c2s.text[0] == '/') {
-                handleAdmin(c2s, self);
+                if (handleAdmin(c2s, self) == -1) {
+                    //return NULL;
+                }
+            } else if (urmCode == kickedFromTheServerCode) {
+                loop = 0;
             } else {
                 strLength = getStringLength(&c2s);
                 memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
@@ -99,6 +100,7 @@ void *clientthread(void *arg) {
                 prepareMessage(&s2c);
                 sendToQueue(&s2c, self);
             }
+
         }
     }
     handleURM(urmCode, self);
@@ -115,7 +117,7 @@ int getStringLength(Message *buffer) {
     switch (buffer->header.type) {
         case loginRequestCode:
             length = buffer->header.length - sizeof(buffer->body.lrq.version) - sizeof(buffer->body.lrq.magic);
-            infoPrint("%i", length);
+            debugPrint("String Length: %i", length);
             break;
         case client2ServerCode:
             length = buffer->header.length;
@@ -164,7 +166,7 @@ void handleURM(uint8_t urmCode, User *self) {
     unlockUser();
 }
 
-void handleAdmin(Message buffer, User *self) {
+int handleAdmin(Message buffer, User *self) {
     Message s2c = initMessage(server2clientCode);
     char text[TEXT_MAX];
 
@@ -174,6 +176,7 @@ void handleAdmin(Message buffer, User *self) {
     uint8_t commandCode;
     int ret = 0;
     uint16_t length;
+    int isAdmin = strcmp(self->name, "Admin");
 
     //TODO: Identify the send command
     if (strncmp(text, "/kick", 5) == 0 && strLength > 6) {
@@ -185,11 +188,12 @@ void handleAdmin(Message buffer, User *self) {
     } else {
         commandCode = invalidCommandCode;
     }
-
+    debugPrint("Command: %i", commandCode);
     //TODO: Check the command
     if (commandCode == invalidCommandCode) {
         strcpy(text, "Invalid Command!");
-    } else if (strcmp(self->name, "Admin") != 0) {
+
+    } else if (isAdmin != 0) {
         switch (commandCode) {
             case kickClientCommandCode:
                 strcpy(text, "You must be administrator to use the /kick Command!");
@@ -201,7 +205,7 @@ void handleAdmin(Message buffer, User *self) {
                 strcpy(text, "You must be administrator to use the /resume Command!");
                 break;
         }
-    } else {
+    } else if (isAdmin == 0) {
         if (commandCode == kickClientCommandCode) {
             char tbkName[NAME_MAX] = "";
             uint16_t length = getStringLength(&buffer);
@@ -209,11 +213,25 @@ void handleAdmin(Message buffer, User *self) {
             memcpy(tbkName, buffer.body.c2s.text + 6, length);
             tbkName[length] = '\0';
             User *it = getFirstUser();
-            while (it != NULL && strcmp(tbkName, it->name) == 0) {
+            while (it != NULL) {
+                if (strcmp(tbkName, it->name) == 0) {
+                    break;
+                }
                 it = it->next;
             }
+
             User *tbkUser = it;
-            if (tbkUser == NULL) {
+            if (tbkUser == self) {
+                strcpy(text, "Admin cannot be kicked from the server!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
+
+            } else if (tbkUser == NULL) {
                 strcpy(text, "User to /kick does not exist on the server");
                 strLength = strlen(text);
                 s2c.body.s2c.timestamp = getTime();
@@ -251,7 +269,7 @@ void handleAdmin(Message buffer, User *self) {
             }
         }
     }
-    if (commandCode != kickClientCommandCode) {
+    if (commandCode != kickClientCommandCode || isAdmin != 0) {
         strLength = strlen(text);
         s2c.body.s2c.timestamp = getTime();
         s2c.body.s2c.originalSender[0] = '\0';
@@ -260,6 +278,7 @@ void handleAdmin(Message buffer, User *self) {
         prepareMessage(&s2c);
         sendMessage(self->sock, &s2c);
     }
+    return 0;
 }
 
 void closeClient(User *user) {
@@ -274,13 +293,3 @@ void closeClient(User *user) {
     close(user->sock);
     free(user);
 }
-
-void printList() {
-    User *it = getFirstUser();
-    while (it != NULL) {
-        debugPrint(it->name);
-        it = it->next;
-    }
-}
-
-
