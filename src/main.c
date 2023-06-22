@@ -9,7 +9,6 @@
 
 static void print_help();
 static void quit();
-static uint16_t input(int argc, char **argv);
 
 int main(int argc, char **argv)
 {

@@ -4,6 +4,7 @@
 #include "util.h"
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <semaphore.h>
 //#include "network.h"
 //#include "user.h"
 
@@ -13,25 +14,17 @@ static int broadcastStatus;
 static uint8_t priority = 0;
 struct mq_attr options;
 uint8_t chatStatus = running;
+static sem_t sem;
 
 static void *broadcastAgent(void *arg)
 {
 
-    char *text = "Discarded your message, because th chat is paused nad the send queue is full!";
     Message msg;
     while(1)
     {
         //TODO: Implement thread function for the broadcast agent here!
         mq_receive(messageQueue, ((char*)&msg), options.mq_msgsize, NULL);
-        if(options.mq_curmsgs > options.mq_maxmsg)
-        {
-            msg = initMessage(server2clientCode);
-            msg.body.s2c.timestamp = getTime();
-            strcpy(msg.body.s2c.originalSender,'\0');
-            memcpy(msg.body.s2c.text, text, strlen(text));
-            setMsgLength(&msg,strlen(text));
-            prepareMessage(&msg);
-        }
+
         broadcastMessage(NULL, &msg);
 
     }
@@ -40,6 +33,14 @@ static void *broadcastAgent(void *arg)
 
 int broadcastAgentInit(void)
 {
+    //TODO: init semaphore
+
+    if(sem_init(&sem, pshared, value)!=0)
+    {
+        errorPrint("Cannot initializes semaphore");
+        return -1;
+    }
+
 	//TODO: create message queue
     options.mq_flags = 0;
     options.mq_maxmsg = 10;
@@ -64,9 +65,10 @@ int broadcastAgentInit(void)
 void broadcastAgentCleanup(void)
 {
     //TODO: stop thread
-    pthread_exit(&threadId);
+    pthread_cancel(threadId);
 	//TODO: destroy message queue
     mq_unlink(&messageQueue);
+    sem_destroy(&sem);
 
 }
 
@@ -92,12 +94,27 @@ void sendMessage(int fd, void * buffer)
     }
 }
 
-void sendToQueue(Message *buffer)
+void sendToQueue(Message *buffer, User *user)
 {
+    debugPrint("Number of Messages on Queue: %i",options.mq_curmsgs);
+    char *text = "Discarded your message, because the chat is paused and the send queue is full!";
+    Message msg = initMessage(server2clientCode);
+    if(options.mq_curmsgs > options.mq_maxmsg)
+    {
+        msg.body.s2c.timestamp = getTime();
+        strcpy(msg.body.s2c.originalSender,'\0');
+        memcpy(msg.body.s2c.text, text, strlen(text));
+        setMsgLength(&msg,strlen(text));
+        prepareMessage(&msg);
+        sendMessage(user->sock, &msg);
+    }
+    else
+    {
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = 0;
+    ts.tv_nsec = 0U;
     mq_timedsend(messageQueue, (char*)buffer, sizeof(Message), 0, &ts);
+    }
 }
 
 void printMSQ()
@@ -111,10 +128,12 @@ mqd_t getMSQ()
 
 void pauseChat()
 {
+    sem_wait(&sem);
     chatStatus = paused;
 }
 void resumeChat()
 {
+    sem_post(&sem);
     chatStatus = running;
 }
 uint8_t getChatStatus()

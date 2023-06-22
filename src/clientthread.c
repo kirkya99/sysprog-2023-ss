@@ -101,7 +101,7 @@ void *clientthread(void *arg)
             //TODO: Send Server2Client
 
             prepareMessage(&s2c);
-            sendToQueue(&s2c);
+            sendToQueue(&s2c, self);
             }
         }
     }
@@ -232,13 +232,11 @@ void handleAdmin(Message buffer, User *self)
     }
     else {
         if (commandCode == kickClientCommandCode) {
-            char *command;
             char tbkName[NAME_MAX] = "";
             uint16_t length = getStringLength(&buffer);
             uint16_t nameLength = length - 6;
             memcpy(tbkName, buffer.body.c2s.text + 6, length);
             tbkName[length] = '\0';
-            strcpy(text, tbkName);
             User *it = getFirstUser();
             while(it != NULL && strcmp(tbkName, it->name)==0)
             {
@@ -247,6 +245,13 @@ void handleAdmin(Message buffer, User *self)
             User *tbkUser = it;
             if (tbkUser == NULL) {
                 strcpy(text, "User to /kick does not exist on the server");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
             } else
             {
                 Message urm = initMessage(userRemovedCode);
@@ -279,9 +284,14 @@ void handleAdmin(Message buffer, User *self)
     }
     if(commandCode != kickClientCommandCode)
     {
-
+        strLength = strlen(text);
+        s2c.body.s2c.timestamp = getTime();
+        s2c.body.s2c.originalSender[0] = '\0';
+        memcpy(s2c.body.s2c.text, text, strLength);
+        setMsgLength(&s2c, strLength);
+        prepareMessage(&s2c);
+        sendMessage(self->sock, &s2c);
     }
-    debugPrint(text);
 }
 
 void closeClient(User *user)
