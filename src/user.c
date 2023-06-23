@@ -16,6 +16,7 @@ struct User *createUser() {
     User *newUser = (User *) malloc(sizeof(User));
     newUser->sock = 0;
     newUser->thread = 0;
+    newUser->name[0] = '\0';
     if (newUser == NULL) {
         return NULL;
     }
@@ -37,7 +38,7 @@ struct User *createUser() {
 int iterateOverList(User *self, void *buffer, void (*func)(int, void *)) {
     int retVal = 0;
     for (User *it = userFront; it != NULL; it = it->next) {
-        if (it != self) {
+        if (it != self && it->name[0] != '\0') {
             func(it->sock, buffer);
         }
     }
@@ -76,15 +77,13 @@ void unlockUser() {
 
 int initMutex() {
     int ret;
-    pthread_mutexattr_t mattr;
-    ret = pthread_mutex_init(&userLock, &mattr);
+    ret = pthread_mutex_init(&userLock, NULL);
     return ret;
 }
 
 void printList() {
     User *it = getFirstUser();
-    if(it==NULL)
-    {
+    if (it == NULL) {
         debugPrint("-");
     }
     while (it != NULL) {

@@ -3,7 +3,6 @@
 #include "util.h"
 #include "network.h"
 #include "broadcastagent.h"
-#include <mqueue.h>
 
 
 void *clientthread(void *arg) {
@@ -12,30 +11,31 @@ void *clientthread(void *arg) {
     int connectionStatus;
 
     //TODO: Receive LoginRequest
-    lockUser();
     Message lrq;
     connectionStatus = receiveMessage(self->sock, &lrq);
     if (connectionStatus <= 0) {
+        unlockUser();
         goto exit;
     }
-    int strLength = getStringLength(&lrq);
+    uint16_t strLength = getStringLength(&lrq);
     char name[NAME_MAX];
     memcpy(name, lrq.body.lrq.name, strLength);
     //TODO: Send LoginResponse
     Message lre = initMessage(loginResponseCode);
     lre.body.lre.code = checkClientName(name, strLength);
     char *sName = "reference-server";
-    int sNameLen = strlen(sName);
+    uint16_t sNameLen = strlen(sName);
     memcpy(lre.body.lre.sName, sName, sNameLen);
 
     setMsgLength(&lre, strlen(sName));
     prepareMessage(&lre);
     sendMessage(self->sock, &lre);
     if (lre.body.lre.code != 0) {
+        unlockUser();
         goto exit;
     }
     name[strLength] = '\0';
-    strcpy(&self->name, name);
+    strcpy(self->name, name);
 
     //TODO: Send UserAdded to all clients
     Message uad = initMessage(userAddedCode);
@@ -55,7 +55,7 @@ void *clientthread(void *arg) {
     User *user = getFirstUser();
     while (user->next != NULL) {
         if (user != self) {
-            strLength = strlen(&user->name);
+            strLength = strlen(user->name);
             memcpy(uad.body.uad.name, &user->name, strLength);
             setMsgLength(&uad, strLength);
             uad.body.uad.timestamp = 0;
@@ -91,7 +91,7 @@ void *clientthread(void *arg) {
             } else {
                 strLength = getStringLength(&c2s);
                 memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
-                strcpy(s2c.body.s2c.originalSender, &self->name);
+                strcpy(s2c.body.s2c.originalSender, self->name);
                 s2c.body.s2c.timestamp = getTime();
                 setMsgLength(&s2c, strLength);
 
@@ -103,17 +103,18 @@ void *clientthread(void *arg) {
 
         }
     }
+    lockUser();
     handleURM(urmCode, self);
+    unlockUser();
 
     exit:
-    unlockUser();
     debugPrint("Client thread stopping.");
     closeClient(self);
     return NULL;
 }
 
 int getStringLength(Message *buffer) {
-    int length = 0;
+    uint16_t length = 0;
     switch (buffer->header.type) {
         case loginRequestCode:
             length = buffer->header.length - sizeof(buffer->body.lrq.version) - sizeof(buffer->body.lrq.magic);
@@ -152,7 +153,6 @@ int checkClientName(char *name, int length) {
 void handleURM(uint8_t urmCode, User *self) {
     Message urm;
     uint16_t strLength;
-    lockUser();
     urm = initMessage(userRemovedCode);
     urm.body.urm.code = urmCode;
     urm.body.urm.timestamp = getTime();
@@ -163,19 +163,15 @@ void handleURM(uint8_t urmCode, User *self) {
         prepareMessage(&urm);
         broadcastMessage(self, &urm);
     }
-    unlockUser();
 }
 
 int handleAdmin(Message buffer, User *self) {
     Message s2c = initMessage(server2clientCode);
     char text[TEXT_MAX];
 
-    char *command;
     uint16_t strLength = getStringLength(&buffer);
     memcpy(text, buffer.body.c2s.text, strLength);
     uint8_t commandCode;
-    int ret = 0;
-    uint16_t length;
     int isAdmin = strcmp(self->name, "Admin");
 
     //TODO: Identify the send command
@@ -204,8 +200,10 @@ int handleAdmin(Message buffer, User *self) {
             case resumeChatCommandCode:
                 strcpy(text, "You must be administrator to use the /resume Command!");
                 break;
+            default:
+                errorPrint("Invalid Input");
         }
-    } else if (isAdmin == 0) {
+    } else {
         if (commandCode == kickClientCommandCode) {
             char tbkName[NAME_MAX] = "";
             uint16_t length = getStringLength(&buffer);
@@ -253,19 +251,19 @@ int handleAdmin(Message buffer, User *self) {
             }
         }
         if (commandCode == pauseChatCommandCode) {
-            if (getChatStatus() == paused) {
+            if (getChatStatus() == lock_sem) {
                 strcpy(text, "The chat is already paused!");
             } else {
-                strcpy(text, "Chat paused by administrator.");
                 pauseChat();
+                strcpy(text, "Chat paused by administrator.");
             }
         }
         if (commandCode == resumeChatCommandCode) {
-            if (getChatStatus() == running) {
+            if (getChatStatus() == unlock_sem) {
                 strcpy(text, "The chat is not paused!");
             } else {
-                strcpy(text, "The chat is no longer paused.");
                 resumeChat();
+                strcpy(text, "The chat is no longer paused.");
             }
         }
     }

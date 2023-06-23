@@ -76,7 +76,7 @@ int checkMsgHeader(uint8_t type, uint16_t length) {
             break;
     }
     if (status == -2) {
-        errorPrint("Incorrect length: %i!");
+        errorPrint("Incorrect length: %i!", length);
     }
     return status;
 }

@@ -20,7 +20,7 @@ static int createPassiveSocket(in_port_t port) {
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(fd, (struct sockaddr_in *) &address, sizeof(address)) == -1) {
+    if (bind(fd, (struct sockaddr *) &address, sizeof(address)) == -1) {
         goto error;
     }
     //TODO: listen()
@@ -60,7 +60,6 @@ int connectionHandler(in_port_t port) {
             errorPrint("Error while creating thread");
             continue;
         }
-        unlockUser();
         continue;
         return 0;    //never reached
     }

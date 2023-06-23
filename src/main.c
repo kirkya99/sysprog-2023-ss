@@ -7,7 +7,8 @@
 
 static void print_help();
 
-static void quit();
+static void sigint_handler();
+static void sigsegv_handler();
 
 int main(int argc, char **argv) {
     uint16_t port = 8111;
@@ -38,13 +39,13 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < strLength; i++) {
                     if (strPort[i] < 0x30 || strPort[i] > 0x39) {
                         errorPrint("Port number must be an integer between 1024 and 65535!");
-                        exit(EXIT_SUCCESS);
+                        exit(EXIT_FAILURE);
                     }
                 }
                 port = (uint16_t) atoi(strPort);
-                if (port < 1023 || port > 65535) {
+                if (port < 1023) {
                     errorPrint("Port number must be an integer between 1024 and 65535!");
-                    exit(EXIT_SUCCESS);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'h':
@@ -52,14 +53,38 @@ int main(int argc, char **argv) {
                 exit(EXIT_SUCCESS);
             default:
                 errorPrint("Option %c incorrect", option_index);
-                exit(EXIT_SUCCESS);
+                exit(EXIT_FAILURE);
         }
     }
     //TODO: perform initialization
     if (broadcastAgentInit() == -1) {
         return EXIT_FAILURE;
     }
-    signal(SIGINT, quit);
+    sigset_t mask_sigint;
+    sigset_t mask_sigsegv;
+    sigemptyset(&mask_sigint);
+    sigemptyset(&mask_sigsegv);
+
+    const struct sigaction action_sigint = {
+            .sa_handler = sigint_handler,
+            .sa_mask = mask_sigint,
+            .sa_flags = 0
+    };
+
+    const struct sigaction action_sigsegv = {
+            .sa_handler = sigsegv_handler,
+            .sa_mask = mask_sigsegv,
+            .sa_flags = 0
+    };
+
+    if (sigaction(SIGINT, &action_sigint, NULL) != 0) {
+        errorPrint("Cannot register signal handler!");
+        exit(EXIT_FAILURE);
+    }
+    if(sigaction(SIGSEGV, &action_sigsegv, NULL) != 0) {
+        errorPrint("Cannot register signal handler!");
+        exit(EXIT_FAILURE);
+    }
 
     //TODO: use port specified via command line
     const int result = connectionHandler((in_port_t) port);
@@ -75,8 +100,14 @@ static void print_help() {
     infoPrint("  -p PORT        set TCP port to use (default: 8111)");
 }
 
-static void quit() {
+static void sigint_handler() {
     infoPrint("Caught Signal 2, shutting down!");
     broadcastAgentCleanup();
     exit(EXIT_SUCCESS);
+}
+
+static void sigsegv_handler() {
+    errorPrint("Caught Segmentation Fault, shutting down");
+    broadcastAgentCleanup();
+    exit(EXIT_FAILURE);
 }

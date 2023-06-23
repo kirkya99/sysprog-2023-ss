@@ -10,10 +10,9 @@
 
 static mqd_t messageQueue;
 static pthread_t threadId;
-static int broadcastStatus;
-static uint8_t priority = 0;
+static unsigned int priority = 0;
 struct mq_attr options;
-uint8_t chatStatus = running;
+uint8_t chatStatus = unlock_sem;
 static sem_t sem;
 static char *msqName = "/broadcastMSQ";
 
@@ -22,10 +21,10 @@ static void *broadcastAgent(void *arg) {
     Message msg;
     while (1) {
         //TODO: Implement thread function for the broadcast agent here!
-        mq_receive(messageQueue, ((char *) &msg), options.mq_msgsize, NULL);
-
+        mq_receive(messageQueue, ((char *) &msg), options.mq_msgsize, &priority);
+        sem_wait(&sem);
         broadcastMessage(NULL, &msg);
-
+        sem_post(&sem);
     }
     return arg;
 }
@@ -33,7 +32,7 @@ static void *broadcastAgent(void *arg) {
 int broadcastAgentInit(void) {
     //TODO: init semaphore
 
-    if (sem_init(&sem, pshared, value) != 0) {
+    if (sem_init(&sem, pshared, unlock_sem) != 0) {
         errorPrint("Cannot initializes semaphore");
         return -1;
     }
@@ -51,7 +50,7 @@ int broadcastAgentInit(void) {
         return messageQueue;
     }
     //TODO: start thread/
-    if (pthread_create(&threadId, NULL, broadcastAgent, NULL) != 0) {
+    if (pthread_create(&threadId, NULL, broadcastAgent, &priority) != 0) {
         errorPrint("Error while creating thread for msgQueue");
     }
     return messageQueue;
@@ -86,12 +85,12 @@ void sendMessage(int fd, void *buffer) {
 }
 
 void sendToQueue(Message *buffer, User *user) {
-    debugPrint("Number of Messages on Queue: %i", options.mq_curmsgs);
+    debugPrint("Number of Messages on Queue: %li", options.mq_curmsgs);
     char *text = "Discarded your message, because the chat is paused and the send queue is full!";
     Message msg = initMessage(server2clientCode);
     if (options.mq_curmsgs > options.mq_maxmsg) {
         msg.body.s2c.timestamp = getTime();
-        strcpy(msg.body.s2c.originalSender, '\0');
+        msg.body.s2c.originalSender[0] = '\0';
         memcpy(msg.body.s2c.text, text, strlen(text));
         setMsgLength(&msg, strlen(text));
         prepareMessage(&msg);
@@ -105,7 +104,7 @@ void sendToQueue(Message *buffer, User *user) {
 }
 
 void printMSQ() {
-    debugPrint("Messages: %i", options.mq_curmsgs);
+    debugPrint("Messages: %li", options.mq_curmsgs);
 }
 
 mqd_t getMSQ() {
@@ -114,12 +113,12 @@ mqd_t getMSQ() {
 
 void pauseChat() {
     sem_wait(&sem);
-    chatStatus = paused;
+    chatStatus = lock_sem;
 }
 
 void resumeChat() {
     sem_post(&sem);
-    chatStatus = running;
+    chatStatus = unlock_sem;
 }
 
 uint8_t getChatStatus() {
