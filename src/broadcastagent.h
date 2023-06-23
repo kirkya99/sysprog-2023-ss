@@ -24,10 +24,6 @@ void sendMessage(int fd, void *buffer);
 
 void sendToQueue(Message *buffer, User *user);
 
-void printMSQ();
-
-mqd_t getMSQ();
-
 void pauseChat();
 
 void resumeChat();

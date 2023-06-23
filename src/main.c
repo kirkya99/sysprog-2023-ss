@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
     if (broadcastAgentInit() == -1) {
         return EXIT_FAILURE;
     }
+
     sigset_t mask_sigint;
     sigset_t mask_sigsegv;
     sigemptyset(&mask_sigint);
@@ -79,7 +80,7 @@ int main(int argc, char **argv) {
 
     if (sigaction(SIGINT, &action_sigint, NULL) != 0) {
         errorPrint("Cannot register signal handler!");
-        exit(EXIT_FAILURE);
+        exit(EXIT_SUCCESS);
     }
     if(sigaction(SIGSEGV, &action_sigsegv, NULL) != 0) {
         errorPrint("Cannot register signal handler!");

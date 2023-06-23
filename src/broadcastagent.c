@@ -5,8 +5,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <semaphore.h>
-//#include "network.h"
-//#include "user.h"
+#include <errno.h>
 
 static mqd_t messageQueue;
 static pthread_t threadId;
@@ -38,7 +37,7 @@ int broadcastAgentInit(void) {
     }
 
     //TODO: create message queue
-    options.mq_flags = 0;
+    //options.mq_flags = 0;
     options.mq_maxmsg = 10;
     options.mq_msgsize = MSG_MAX;
     //options.mq_curmsgs = 0;
@@ -50,9 +49,10 @@ int broadcastAgentInit(void) {
         return messageQueue;
     }
     //TODO: start thread/
-    if (pthread_create(&threadId, NULL, broadcastAgent, &priority) != 0) {
+    if (pthread_create(&threadId, NULL, broadcastAgent, NULL) != 0) {
         errorPrint("Error while creating thread for msgQueue");
     }
+    unlink(msqName);
     return messageQueue;
 }
 
@@ -85,10 +85,14 @@ void sendMessage(int fd, void *buffer) {
 }
 
 void sendToQueue(Message *buffer, User *user) {
-    debugPrint("Number of Messages on Queue: %li", options.mq_curmsgs);
     char *text = "Discarded your message, because the chat is paused and the send queue is full!";
     Message msg = initMessage(server2clientCode);
-    if (options.mq_curmsgs > options.mq_maxmsg) {
+
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 0U;
+    mq_timedsend(messageQueue, (char *) buffer, sizeof(Message), priority, &ts);
+    if (errno == ETIMEDOUT) {
         msg.body.s2c.timestamp = getTime();
         msg.body.s2c.originalSender[0] = '\0';
         memcpy(msg.body.s2c.text, text, strlen(text));
@@ -96,19 +100,8 @@ void sendToQueue(Message *buffer, User *user) {
         prepareMessage(&msg);
         sendMessage(user->sock, &msg);
     } else {
-        struct timespec ts;
-        ts.tv_sec = 0;
-        ts.tv_nsec = 0U;
-        mq_timedsend(messageQueue, (char *) buffer, sizeof(Message), 0, &ts);
+        return;
     }
-}
-
-void printMSQ() {
-    debugPrint("Messages: %li", options.mq_curmsgs);
-}
-
-mqd_t getMSQ() {
-    return messageQueue;
 }
 
 void pauseChat() {

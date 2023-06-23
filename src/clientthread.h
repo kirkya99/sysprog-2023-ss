@@ -19,7 +19,7 @@ int checkClientName(char *name, int length);
 
 void handleURM(uint8_t urmCode, User *self);
 
-int handleAdmin(Message buffer, User *self);
+void handleAdmin(Message buffer, User *self);
 
 void closeClient(User *user);
 

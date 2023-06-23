@@ -65,10 +65,25 @@ void *clientthread(void *arg) {
         user = user->next;
     }
     unlockUser();
+
+
+
     //TODO: Send and receive messages
     Message c2s, s2c;
     int loop = 1;
     uint8_t urmCode;
+
+    if (getChatStatus() == lock_sem) {
+        s2c = initMessage(server2clientCode);
+        char *text = "Chat paused by administrator.";
+        strLength = strlen(text);
+        s2c.body.s2c.timestamp = getTime();
+        s2c.body.s2c.originalSender[0] = '\0';
+        memcpy(s2c.body.s2c.text, text, strLength);
+        setMsgLength(&s2c, strLength);
+        prepareMessage(&s2c);
+        broadcastMessage(NULL, &s2c);
+    }
     while (loop == 1) {
         //TODO: Receive Client2Server
         s2c = initMessage(server2clientCode);
@@ -83,9 +98,7 @@ void *clientthread(void *arg) {
         }
         if (connectionStatus > clientClosedConnection) {
             if (c2s.body.c2s.text[0] == '/') {
-                if (handleAdmin(c2s, self) == -1) {
-                    //return NULL;
-                }
+                handleAdmin(c2s, self);
             } else if (urmCode == kickedFromTheServerCode) {
                 loop = 0;
             } else {
@@ -165,7 +178,7 @@ void handleURM(uint8_t urmCode, User *self) {
     }
 }
 
-int handleAdmin(Message buffer, User *self) {
+void handleAdmin(Message buffer, User *self) {
     Message s2c = initMessage(server2clientCode);
     char text[TEXT_MAX];
 
@@ -193,12 +206,33 @@ int handleAdmin(Message buffer, User *self) {
         switch (commandCode) {
             case kickClientCommandCode:
                 strcpy(text, "You must be administrator to use the /kick Command!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
                 break;
             case pauseChatCommandCode:
                 strcpy(text, "You must be administrator to use the /pause Command!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
                 break;
             case resumeChatCommandCode:
                 strcpy(text, "You must be administrator to use the /resume Command!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
                 break;
             default:
                 errorPrint("Invalid Input");
@@ -253,30 +287,48 @@ int handleAdmin(Message buffer, User *self) {
         if (commandCode == pauseChatCommandCode) {
             if (getChatStatus() == lock_sem) {
                 strcpy(text, "The chat is already paused!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
             } else {
                 pauseChat();
                 strcpy(text, "Chat paused by administrator.");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                broadcastMessage(NULL, &s2c);
             }
         }
         if (commandCode == resumeChatCommandCode) {
             if (getChatStatus() == unlock_sem) {
                 strcpy(text, "The chat is not paused!");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                sendMessage(self->sock, &s2c);
             } else {
                 resumeChat();
                 strcpy(text, "The chat is no longer paused.");
+                strLength = strlen(text);
+                s2c.body.s2c.timestamp = getTime();
+                s2c.body.s2c.originalSender[0] = '\0';
+                memcpy(s2c.body.s2c.text, text, strLength);
+                setMsgLength(&s2c, strLength);
+                prepareMessage(&s2c);
+                broadcastMessage(NULL, &s2c);
             }
         }
     }
-    if (commandCode != kickClientCommandCode || isAdmin != 0) {
-        strLength = strlen(text);
-        s2c.body.s2c.timestamp = getTime();
-        s2c.body.s2c.originalSender[0] = '\0';
-        memcpy(s2c.body.s2c.text, text, strLength);
-        setMsgLength(&s2c, strLength);
-        prepareMessage(&s2c);
-        sendMessage(self->sock, &s2c);
-    }
-    return 0;
 }
 
 void closeClient(User *user) {
