@@ -66,8 +66,6 @@ void *clientthread(void *arg) {
     }
     unlockUser();
 
-
-
     //TODO: Send and receive messages
     Message c2s, s2c;
     int loop = 1;
