@@ -8,7 +8,10 @@
 static void print_help();
 
 static void sigint_handler();
+
 static void sigsegv_handler();
+
+static void sigpipe_handler();
 
 int main(int argc, char **argv) {
     uint16_t port = 8111;
@@ -63,8 +66,10 @@ int main(int argc, char **argv) {
 
     sigset_t mask_sigint;
     sigset_t mask_sigsegv;
+    sigset_t mask_sigpipe;
     sigemptyset(&mask_sigint);
     sigemptyset(&mask_sigsegv);
+    sigemptyset(&mask_sigpipe);
 
     const struct sigaction action_sigint = {
             .sa_handler = sigint_handler,
@@ -78,11 +83,21 @@ int main(int argc, char **argv) {
             .sa_flags = 0
     };
 
+    const struct sigaction action_sigpipe = {
+            .sa_handler = sigpipe_handler,
+            .sa_mask = mask_sigpipe,
+            .sa_flags = 0
+    };
+
     if (sigaction(SIGINT, &action_sigint, NULL) != 0) {
         errorPrint("Cannot register signal handler!");
         exit(EXIT_SUCCESS);
     }
-    if(sigaction(SIGSEGV, &action_sigsegv, NULL) != 0) {
+    if (sigaction(SIGSEGV, &action_sigsegv, NULL) != 0) {
+        errorPrint("Cannot register signal handler!");
+        exit(EXIT_FAILURE);
+    }
+    if (sigaction(SIGPIPE, &action_sigpipe, NULL) != 0) {
         errorPrint("Cannot register signal handler!");
         exit(EXIT_FAILURE);
     }
@@ -108,7 +123,13 @@ static void sigint_handler() {
 }
 
 static void sigsegv_handler() {
-    errorPrint("Caught Segmentation Fault, shutting down");
+    errorPrint("Caught Segmentation Fault, shutting down!");
+    broadcastAgentCleanup();
+    exit(EXIT_FAILURE);
+}
+
+static void sigpipe_handler() {
+    errorPrint("Caught Broken Pipe Error, shutting down!");
     broadcastAgentCleanup();
     exit(EXIT_FAILURE);
 }
