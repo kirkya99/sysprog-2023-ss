@@ -100,9 +100,7 @@ void *clientthread(void *arg) {
         if (connectionStatus > clientClosedConnection) {
             if (c2s.body.c2s.text[0] == '/') {
                 handleAdmin(c2s, self);
-            } /*else if (urmCode == kickedFromTheServerCode) {
-                loop = 0;
-            } */else {
+            } else {
                 strLength = getStringLength(&c2s);
                 memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
                 strcpy(s2c.body.s2c.originalSender, self->name);
@@ -242,7 +240,7 @@ void handleAdmin(Message buffer, User *self) {
             debugPrint("To be kicked:");
             debugPrint(it->name);
             while (it != NULL) {
-                if (strcmp(tbkName, it->name) != 0) {
+                if (strcmp(tbkName, it->name) == 0) {
                     debugPrint("Found:");
                     debugPrint(it->name);
                     break;
