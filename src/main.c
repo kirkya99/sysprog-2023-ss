@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 
     if (sigaction(SIGINT, &action_sigint, NULL) != 0) {
         errorPrint("Cannot register signal handler!");
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
     if (sigaction(SIGSEGV, &action_sigsegv, NULL) != 0) {
         errorPrint("Cannot register signal handler!");

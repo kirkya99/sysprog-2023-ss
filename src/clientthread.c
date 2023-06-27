@@ -17,6 +17,10 @@ void *clientthread(void *arg) {
         unlockUser();
         goto exit;
     }
+    if(lrq.body.lrq.name[0] == '\0')
+    {
+        goto exit;
+    }
     uint16_t strLength = getStringLength(&lrq);
     char name[NAME_MAX];
     memcpy(name, lrq.body.lrq.name, strLength);
@@ -97,9 +101,9 @@ void *clientthread(void *arg) {
         if (connectionStatus > clientClosedConnection) {
             if (c2s.body.c2s.text[0] == '/') {
                 handleAdmin(c2s, self);
-            } else if (urmCode == kickedFromTheServerCode) {
+            } /*else if (urmCode == kickedFromTheServerCode) {
                 loop = 0;
-            } else {
+            } */else {
                 strLength = getStringLength(&c2s);
                 memcpy(s2c.body.s2c.text, c2s.body.c2s.text, strLength);
                 strcpy(s2c.body.s2c.originalSender, self->name);
@@ -199,42 +203,34 @@ void handleAdmin(Message buffer, User *self) {
     //TODO: Check the command
     if (commandCode == invalidCommandCode) {
         strcpy(text, "Invalid Command!");
-
+        strLength = strlen(text);
+        s2c.body.s2c.timestamp = getTime();
+        s2c.body.s2c.originalSender[0] = '\0';
+        memcpy(s2c.body.s2c.text, text, strLength);
+        setMsgLength(&s2c, strLength);
+        prepareMessage(&s2c);
+        sendMessage(self->sock, &s2c);
     } else if (isAdmin != 0) {
         switch (commandCode) {
             case kickClientCommandCode:
                 strcpy(text, "You must be administrator to use the /kick Command!");
-                strLength = strlen(text);
-                s2c.body.s2c.timestamp = getTime();
-                s2c.body.s2c.originalSender[0] = '\0';
-                memcpy(s2c.body.s2c.text, text, strLength);
-                setMsgLength(&s2c, strLength);
-                prepareMessage(&s2c);
-                sendMessage(self->sock, &s2c);
                 break;
             case pauseChatCommandCode:
                 strcpy(text, "You must be administrator to use the /pause Command!");
-                strLength = strlen(text);
-                s2c.body.s2c.timestamp = getTime();
-                s2c.body.s2c.originalSender[0] = '\0';
-                memcpy(s2c.body.s2c.text, text, strLength);
-                setMsgLength(&s2c, strLength);
-                prepareMessage(&s2c);
-                sendMessage(self->sock, &s2c);
                 break;
             case resumeChatCommandCode:
                 strcpy(text, "You must be administrator to use the /resume Command!");
-                strLength = strlen(text);
-                s2c.body.s2c.timestamp = getTime();
-                s2c.body.s2c.originalSender[0] = '\0';
-                memcpy(s2c.body.s2c.text, text, strLength);
-                setMsgLength(&s2c, strLength);
-                prepareMessage(&s2c);
-                sendMessage(self->sock, &s2c);
                 break;
             default:
                 errorPrint("Invalid Input");
         }
+        strLength = strlen(text);
+        s2c.body.s2c.timestamp = getTime();
+        s2c.body.s2c.originalSender[0] = '\0';
+        memcpy(s2c.body.s2c.text, text, strLength);
+        setMsgLength(&s2c, strLength);
+        prepareMessage(&s2c);
+        sendMessage(self->sock, &s2c);
     } else {
         if (commandCode == kickClientCommandCode) {
             char tbkName[NAME_MAX] = "";
@@ -243,11 +239,18 @@ void handleAdmin(Message buffer, User *self) {
             memcpy(tbkName, buffer.body.c2s.text + 6, length);
             tbkName[length] = '\0';
             User *it = getFirstUser();
+            debugPrint("To be kicked:");
+            debugPrint(it->name);
             while (it != NULL) {
-                if (strcmp(tbkName, it->name) == 0) {
+                if (memcmp(tbkName, it->name, strlen(tbkName)) == 0 && strlen(tbkName) == strlen(it->name)) {
+                    debugPrint("Found:");
+                    debugPrint(it->name);
                     break;
+                } else {
+                    debugPrint("Not Found:");
+                    debugPrint(it->name);
+                    it = it->next;
                 }
-                it = it->next;
             }
 
             User *tbkUser = it;
@@ -270,7 +273,7 @@ void handleAdmin(Message buffer, User *self) {
                 setMsgLength(&s2c, strLength);
                 prepareMessage(&s2c);
                 sendMessage(self->sock, &s2c);
-            } else {
+            } else if (tbkUser != NULL) {
                 Message urm = initMessage(userRemovedCode);
                 urm.body.urm.code = kickedFromTheServerCode;
                 memcpy(urm.body.urm.name, tbkName, nameLength);
