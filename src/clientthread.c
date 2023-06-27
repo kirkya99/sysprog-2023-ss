@@ -17,8 +17,7 @@ void *clientthread(void *arg) {
         unlockUser();
         goto exit;
     }
-    if(lrq.body.lrq.name[0] == '\0')
-    {
+    if (lrq.body.lrq.name[0] == '\0') {
         goto exit;
     }
     uint16_t strLength = getStringLength(&lrq);
@@ -187,7 +186,6 @@ void handleAdmin(Message buffer, User *self) {
     uint16_t strLength = getStringLength(&buffer);
     memcpy(text, buffer.body.c2s.text, strLength);
     uint8_t commandCode;
-    int isAdmin = strcmp(self->name, "Admin");
 
     //TODO: Identify the send command
     if (strncmp(text, "/kick", 5) == 0 && strLength > 6) {
@@ -210,7 +208,8 @@ void handleAdmin(Message buffer, User *self) {
         setMsgLength(&s2c, strLength);
         prepareMessage(&s2c);
         sendMessage(self->sock, &s2c);
-    } else if (isAdmin != 0) {
+    }
+    if (strcmp(self->name, "Admin") != 0) {
         switch (commandCode) {
             case kickClientCommandCode:
                 strcpy(text, "You must be administrator to use the /kick Command!");
@@ -231,7 +230,8 @@ void handleAdmin(Message buffer, User *self) {
         setMsgLength(&s2c, strLength);
         prepareMessage(&s2c);
         sendMessage(self->sock, &s2c);
-    } else {
+    }
+    if (strcmp(self->name, "Admin") == 0) {
         if (commandCode == kickClientCommandCode) {
             char tbkName[NAME_MAX] = "";
             uint16_t length = getStringLength(&buffer);
@@ -242,7 +242,7 @@ void handleAdmin(Message buffer, User *self) {
             debugPrint("To be kicked:");
             debugPrint(it->name);
             while (it != NULL) {
-                if (memcmp(tbkName, it->name, strlen(tbkName)) == 0 && strlen(tbkName) == strlen(it->name)) {
+                if (strcmp(tbkName, it->name) != 0) {
                     debugPrint("Found:");
                     debugPrint(it->name);
                     break;
@@ -264,7 +264,8 @@ void handleAdmin(Message buffer, User *self) {
                 prepareMessage(&s2c);
                 sendMessage(self->sock, &s2c);
 
-            } else if (tbkUser == NULL) {
+            }
+            if (tbkUser == NULL) {
                 strcpy(text, "User to /kick does not exist on the server");
                 strLength = strlen(text);
                 s2c.body.s2c.timestamp = getTime();
@@ -273,7 +274,8 @@ void handleAdmin(Message buffer, User *self) {
                 setMsgLength(&s2c, strLength);
                 prepareMessage(&s2c);
                 sendMessage(self->sock, &s2c);
-            } else if (tbkUser != NULL) {
+            }
+            if (tbkUser != NULL) {
                 Message urm = initMessage(userRemovedCode);
                 urm.body.urm.code = kickedFromTheServerCode;
                 memcpy(urm.body.urm.name, tbkName, nameLength);

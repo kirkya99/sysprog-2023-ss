@@ -31,8 +31,6 @@ struct User *getFirstUser();
 
 void printList();
 
-User *findUser(char *name);
-
 /*
  * Mutex Locking
  */

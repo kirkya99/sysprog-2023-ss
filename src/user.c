@@ -92,11 +92,4 @@ void printList() {
     }
 }
 
-User *findUser(char *name) {
-    User *user = userFront;
-    while (user != NULL || strcmp(name, user->name) != 0) {
-        user = user->next;
-    }
-    return user;
-}
 
